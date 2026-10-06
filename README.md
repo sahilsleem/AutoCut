@@ -2,57 +2,40 @@
 
 **Turn clips into videos.**
 
-AutoCut is an AI-powered video editor for creators, bringing long-form and vertical video editing together in one application.
+AutoCut is an AI-powered video editor built for creators who want to turn raw footage into polished videos from one simple application.
 
-## What is AutoCut?
+Create **cinematic long-form videos** or **fast, engaging vertical videos** without switching between different editing tools.
 
-AutoCut helps you rapidly assemble raw media into polished, production-ready videos. Whether you are producing cinematic horizontal videos for YouTube or fast-paced vertical shorts for TikTok and Instagram Reels, AutoCut provides the tools to manage your assets, sequence your timeline, and export your final cut directly from your device.
+## What AutoCut Does
 
-## Key Features
+### Long-form video
 
-- **Long-form Video Editing:** A full cinematic editing environment for horizontal HD content. Features smart timelines, voiceover syncing, and multi-track audio.
-- **Vertical Video Editing:** A specialized 9:16 editor built specifically for fast-paced vertical content, complete with crop management and rapid frame seeking.
-- **On-Device Rendering:** Export your finished timeline to high-quality video files entirely on your device using native FFmpeg integration.
-- **Media Management:** Easily organize, categorize, and preview your raw clips before editing.
-- **Mobile First:** A responsive, touch-friendly interface designed for creators on the go.
+Create polished horizontal videos with AI-assisted editing, transcription, media intelligence, timeline generation, and automated video workflows.
 
-## How to Run
+### Vertical video
 
-AutoCut is built with React, TypeScript, Vite, and Capacitor for native mobile deployment.
+Create short-form 9:16 videos with trimming, captions, emojis, timeline controls, curiosity edits, and fast video workflows.
 
-### Development Setup
+## Built for Creators
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
+AutoCut handles the repetitive parts of video editing while keeping the creative control in your hands.
 
-### Building for Android
+The goal is simple:
 
-1. Build the web assets:
-   ```bash
-   npm run build
-   ```
-2. Sync the web assets to the Android project:
-   ```bash
-   npx cap sync android
-   ```
-3. Open the project in Android Studio to build and deploy the APK:
-   ```bash
-   npx cap open android
-   ```
+**Take your footage. Turn it into a finished video.**
 
-## License
+## Download
 
-This project is open-source. Please see the repository for licensing information.
+See the **Releases** section for the latest version of AutoCut.
 
-## Creator
+## Project
 
-**Built by Sahil**
-- [Instagram](https://instagram.com/sahilsleem)
-- [GitHub](https://github.com/sahilsleem)
-- [Email](mailto:isahilsaleem@gmail.com)
+AutoCut combines long-form and vertical video editing into one application.
+
+## Built by
+
+**Sahil Saleem**
+
+Instagram: `sahilsleem`
+GitHub: `sahilsleem`
+Email: `isahilsaleem@gmail.com`
