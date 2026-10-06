@@ -1,4 +1,4 @@
-# AutoCut
+﻿# AutoCut
 
 **Turn clips into videos.**
 
@@ -423,10 +423,10 @@ The objective is simple:
 
 # Built By
 
-**Sahil Saleem**
+**Sahil Saleem** — creator and maintainer of AutoCut
 
-Instagram: `sahilsleem`
-GitHub: `sahilsleem`
+Instagram: `sahilsleem`  
+GitHub: `sahilsleem`  
 Email: `isahilsaleem@gmail.com`
 
 ---
@@ -443,4 +443,7 @@ Development continues as new editing, automation, AI, and media-processing capab
 
 ## License
 
-See the repository for licensing information.
+AutoCut is released under the MIT License. You are free to use, modify, distribute, and build upon the project, including for commercial purposes, subject to the terms of the license.
+
+Copyright © 2026 Sahil Saleem
+
