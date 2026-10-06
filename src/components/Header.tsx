@@ -1,0 +1,172 @@
+import { AutoCutLogo } from './AutoCutLogo';
+import React, { useRef } from 'react';
+import { ArrowLeft, MoreVertical,
+  
+  
+} from 'lucide-react';
+import { LongFormProject } from '../types/project';
+import {
+  exportProjectToPortableJSON,
+  validateAndParseProjectJSON,
+} from '../engine/schema';
+
+interface HeaderProps {
+  onBack?: () => void;
+  project: LongFormProject;
+  currentTime: number;
+  totalDuration: number;
+  isDirty?: boolean;
+  isSavingLocal?: boolean;
+  lastSavedTime?: number | null;
+  onMarkSaved?: () => void;
+  onSetProjectName?: (name: string) => void;
+  onImportProject: (project: LongFormProject) => void;
+  onResetProject: () => void;
+  onOpenRenderModal?: () => void;
+  onOpenRelinkModal?: () => void;
+  unlinkedCount?: number;
+  isFrameEnabled?: boolean;
+  onToggleFrame?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onBack,
+  project,
+  onImportProject,
+  onOpenRenderModal,
+  onResetProject,
+}) => {
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [alertMessage, setAlertMessage] = React.useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = React.useState<{ message: string; onConfirm: () => void } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result as string;
+      const parseResult = validateAndParseProjectJSON(content);
+
+      if (!parseResult.isValid || !parseResult.project) {
+        setAlertMessage('Failed to load project.');
+        return;
+      }
+      onImportProject(parseResult.project);
+      setIsMenuOpen(false);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  return (
+    <header className="relative h-14 bg-editor-bg border-b border-editor-panelBorder px-4 flex items-center justify-between select-none z-30">
+      <div className="flex items-center gap-2">
+        {onBack ? (
+          <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors active:scale-95">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+        ) : (
+          <div className="w-8 h-8" />
+        )}
+      </div>
+
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5"><div className="w-5 h-5 text-white"><AutoCutLogo className="w-full h-full" /></div><h1 className="text-lg font-black tracking-wider uppercase">AutoCut</h1></div>
+      
+      <div className="relative">
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={`p-2 rounded-full transition-colors ${isMenuOpen ? 'bg-editor-surface text-white' : 'text-slate-400 hover:bg-editor-surface hover:text-slate-200'}`}
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
+
+        {isMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+            <div className="absolute top-full right-0 mt-2 w-48 bg-editor-panel border border-editor-panelBorder rounded-xl shadow-2xl py-1 z-50 overflow-hidden origin-top-right animate-in fade-in zoom-in-95 duration-100">
+              <button
+                onClick={() => {
+                  onOpenRenderModal?.();
+                  setIsMenuOpen(false);
+                }}
+                disabled={project.timeline.length === 0}
+                className="w-full text-left px-4 py-3 text-sm font-semibold text-white hover:bg-editor-surface disabled:opacity-50 transition-colors"
+              >
+                Export Video
+              </button>
+              <div className="h-px w-full bg-editor-panelBorder my-1" />
+              <button
+                onClick={() => { fileInputRef.current?.click(); setIsMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-editor-surface hover:text-white transition-colors"
+              >
+                Open project
+              </button>
+              <button
+                onClick={() => {
+                  const jsonStr = exportProjectToPortableJSON(project);
+                  const blob = new Blob([jsonStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const safeName = project.name?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'longform_project';
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${safeName}.longform.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-editor-surface hover:text-white transition-colors"
+              >
+                Back up project
+              </button>
+              <div className="h-px w-full bg-editor-panelBorder my-1" />
+              <button
+                onClick={() => {
+                  setConfirmDialog({ message: 'Are you sure you want to reset the project? All media and edits will be lost.', onConfirm: () => { onResetProject(); setIsMenuOpen(false); setConfirmDialog(null); } });
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/10 transition-colors font-medium"
+              >
+                Reset project
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleOpenProject}
+        accept=".json,.longform.json"
+        className="hidden"
+      />
+          {alertMessage && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-editor-panel border border-editor-panelBorder rounded-2xl w-full max-w-sm shadow-2xl p-6 flex flex-col gap-4">
+            <h2 className="text-lg font-bold text-white">Notice</h2>
+            <p className="text-slate-300">{alertMessage}</p>
+            <div className="flex justify-end mt-2">
+              <button onClick={() => setAlertMessage(null)} className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-slate-300 transition-colors">OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-editor-panel border border-editor-panelBorder rounded-2xl w-full max-w-sm shadow-2xl p-6 flex flex-col gap-4">
+            <h2 className="text-lg font-bold text-white">Confirm</h2>
+            <p className="text-slate-300">{confirmDialog.message}</p>
+            <div className="flex justify-end gap-3 mt-2">
+              <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 text-slate-400 font-medium hover:text-white transition-colors">Cancel</button>
+              <button onClick={confirmDialog.onConfirm} className="px-6 py-2 bg-red-500 text-white font-bold rounded-lg hover:bg-red-400 transition-colors">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};
+
+
+
