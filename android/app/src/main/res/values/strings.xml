@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AutoCut</string>
+    <string name="title_activity_main">AutoCut</string>
+    <string name="package_name">com.AutoCut.app</string>
+    <string name="custom_url_scheme">com.AutoCut.app</string>
+</resources>
+
