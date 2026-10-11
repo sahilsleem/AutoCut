@@ -2,6 +2,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, Play, Pause, Upload, Sparkles, Scissors, Trash2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2, CheckCircle } from 'lucide-react';
 import { pickAndroidMedia } from './platform/androidMedia';
 import { renderVideo } from './platform/render';
+import {
+  calculateShortsInitialCrop,
+  calculateShortsZoomCrop,
+  calculateShortsDragCrop,
+  getShortsVideoStyle,
+} from './engine/shortsFraming';
 
 interface ShortsEditorProps {
   onBack: () => void;
@@ -89,6 +95,16 @@ export default function ShortsEditor({ onBack }: ShortsEditorProps) {
   const timelineTrackRef = useRef<HTMLDivElement>(null);
 
   // Dragging state for crop box
+  const cropDragRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startY: number;
+    startCropX: number;
+    startCropY: number;
+    cropSize: number;
+    boxWidth: number;
+    boxHeight: number;
+  } | null>(null);
     
   // Timeline drag state
   const activeTimelineHandle = useRef<'in' | 'out' | 'segment' | 'playhead' | null>(null);
@@ -123,24 +139,7 @@ export default function ShortsEditor({ onBack }: ShortsEditorProps) {
 
     
 
-    const maxCrop = Math.min(w, h);
-    const cssW = (maxCrop / w) * 100;
-    const cssH = (maxCrop / h) * 100;
-    const initLeft = (100 - cssW) / 2;
-    const initTop = Math.min((100 - cssH) / 2, 20);
-
-    
-
-    const initSegment: Segment = {
-      start: 0,
-      end: dur,
-      crop_x: Math.round((initLeft / 100) * w),
-      crop_y: Math.round((initTop / 100) * h),
-      crop_size: Math.round(maxCrop),
-      zoom: 100,
-      crop_left_pct: initLeft,
-      crop_top_pct: initTop,
-    };
+    const initSegment: Segment = calculateShortsInitialCrop(w, h, dur);
 
     setSegments([initSegment]);
     setActiveSegmentIndex(0);
@@ -252,55 +251,113 @@ export default function ShortsEditor({ onBack }: ShortsEditorProps) {
     video.addEventListener('timeupdate', handleTimeUpdate);
     return () => video.removeEventListener('timeupdate', handleTimeUpdate);
   }, [isPlaying, segments, activeSegmentIndex]);
-// Save crop state into active segment
-  const saveCropToActiveSegment = useCallback((leftPct: number, topPct: number, zoomVal: number) => {
-    setSegments((prev) => {
-      if (!prev[activeSegmentIndex]) return prev;
-      const next = [...prev];
-      const maxCrop = Math.min(origW, origH);
-      const cropSize = maxCrop * (zoomVal / 100);
-      next[activeSegmentIndex] = {
-        ...next[activeSegmentIndex],
-        crop_left_pct: leftPct,
-        crop_top_pct: topPct,
-        crop_x: Math.round((leftPct / 100) * origW),
-        crop_y: Math.round((topPct / 100) * origH),
-        crop_size: Math.round(cropSize),
-        zoom: zoomVal,
-      };
-      return next;
-    });
-  }, [activeSegmentIndex, origW, origH]);
+
 
   // Load crop state for a segment
   const loadSegmentCrop = useCallback((seg: Segment) => {
     setZoomLevel(seg.zoom || 100);
-    const maxCrop = Math.min(origW, origH);
-    const cropSize = seg.crop_size || (maxCrop * ((seg.zoom || 100) / 100));
-    const cssW = (cropSize / origW) * 100;
-    const cssH = (cropSize / origH) * 100;
+  }, []);
 
-    let left = seg.crop_left_pct !== undefined ? seg.crop_left_pct : (seg.crop_x / origW) * 100;
-    let top = seg.crop_top_pct !== undefined ? seg.crop_top_pct : (seg.crop_y / origH) * 100;
-
-    // Enforce bounds
-    if (left < 0) left = 0;
-    if (left + cssW > 100) left = 100 - cssW;
-    if (top < 0) top = 0;
-    if (top + cssH > 100) top = 100 - cssH;
 
     
-  }, [origW, origH]);
+
 
   
 
 
-  // Handle Zoom change
+  // Pointer drag handlers for direct manipulation video positioning
+  const handleCropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!previewContainerRef.current) return;
+    const activeSeg = segments[activeSegmentIndex];
+    if (!activeSeg) return;
+
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+
+    cropDragRef.current = {
+      isDragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startCropX: activeSeg.crop_x ?? 0,
+      startCropY: activeSeg.crop_y ?? 0,
+      cropSize: activeSeg.crop_size || Math.min(origW, origH),
+      boxWidth: rect.width,
+      boxHeight: rect.height,
+    };
+  };
+
+  const handleCropPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!cropDragRef.current || !cropDragRef.current.isDragging) return;
+    const { startX, startY, startCropX, startCropY, cropSize, boxWidth, boxHeight } = cropDragRef.current;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    const updated = calculateShortsDragCrop(
+      startCropX,
+      startCropY,
+      cropSize,
+      dx,
+      dy,
+      boxWidth,
+      boxHeight,
+      origW,
+      origH
+    );
+
+    setSegments((prev) => {
+      const activeSeg = prev[activeSegmentIndex];
+      if (!activeSeg) return prev;
+      const next = [...prev];
+      next[activeSegmentIndex] = {
+        ...activeSeg,
+        crop_x: updated.crop_x,
+        crop_y: updated.crop_y,
+        crop_left_pct: updated.crop_left_pct,
+        crop_top_pct: updated.crop_top_pct,
+      };
+      return next;
+    });
+  };
+
+  const handleCropPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (cropDragRef.current?.isDragging) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      cropDragRef.current = null;
+    }
+  };
+
+  // Handle Zoom change: magnify/demagnify keeping view center and strictly clamped to boundaries
   const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     setZoomLevel(val);
-    
-    saveCropToActiveSegment(parseFloat("0%"), parseFloat("0%"), val);
+
+    const activeSeg = segments[activeSegmentIndex];
+    if (!activeSeg) return;
+
+    const updated = calculateShortsZoomCrop(activeSeg, origW, origH, val);
+
+    setSegments((prev) => {
+      const seg = prev[activeSegmentIndex];
+      if (!seg) return prev;
+      const next = [...prev];
+      next[activeSegmentIndex] = {
+        ...seg,
+        crop_x: updated.crop_x,
+        crop_y: updated.crop_y,
+        crop_size: updated.crop_size,
+        crop_left_pct: updated.crop_left_pct,
+        crop_top_pct: updated.crop_top_pct,
+        zoom: updated.zoom,
+      };
+      return next;
+    });
   };
 
   // Split Segment action
@@ -579,6 +636,10 @@ export default function ShortsEditor({ onBack }: ShortsEditorProps) {
                 {/* The 1002x1002 Cropped Video Square (y=420 out of 1920 -> 21.875%, width=1002/1080 -> 92.77%) */}
                 <div 
                   ref={previewContainerRef}
+                  onPointerDown={handleCropPointerDown}
+                  onPointerMove={handleCropPointerMove}
+                  onPointerUp={handleCropPointerUp}
+                  onPointerCancel={handleCropPointerUp}
                   className="absolute z-20 cursor-move touch-none bg-black overflow-hidden shadow-xl border border-white"
                   style={{
                     left: '3.61%', // (1080 - 1002)/2 / 1080
@@ -592,12 +653,13 @@ export default function ShortsEditor({ onBack }: ShortsEditorProps) {
                     ref={videoRef}
                     src={videoUrl}
                     className="absolute max-w-none origin-top-left pointer-events-none"
-                    style={{
-                      width: `${(origW / (segments[activeSegmentIndex]?.crop_size || 1080)) * 100}%`,
-                      height: `${(origH / (segments[activeSegmentIndex]?.crop_size || 1080)) * 100}%`,
-                      left: `${-(segments[activeSegmentIndex]?.crop_x || 0) / (segments[activeSegmentIndex]?.crop_size || 1080) * 100}%`,
-                      top: `${-(segments[activeSegmentIndex]?.crop_y || 0) / (segments[activeSegmentIndex]?.crop_size || 1080) * 100}%`,
-                    }}
+                    style={getShortsVideoStyle(
+                      origW,
+                      origH,
+                      segments[activeSegmentIndex]?.crop_size || 1080,
+                      segments[activeSegmentIndex]?.crop_x || 0,
+                      segments[activeSegmentIndex]?.crop_y || 0
+                    )}
                     playsInline
                     onLoadedMetadata={handleLoadedMetadata}
                   />

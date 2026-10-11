@@ -4,6 +4,7 @@ import { createDefaultTransform, createInitialProject, classifyAspectRatio, DEFA
 import { extractAudioWaveform } from '../engine/audio';
 import { transcribeAudioFile } from '../engine/transcription';
 import { analyzeMediaAsset } from '../engine/mediaAnalysis';
+import { captureVideoThumbnail } from '../engine/mediaThumbnail';
 import { releaseVisionModel } from '../engine/vision';
 import { generateDraftTimeline, DraftOptions, DraftStats } from '../engine/draftTimeline';
 import { prepareProjectPipeline, PreparationProgress, PreparationResult } from '../engine/preparation';
@@ -743,6 +744,7 @@ export function useProject() {
         aspectRatio: ratio,
         aspectRatioLabel: label,
         size: file.size,
+        thumbnailUrl: isImage ? url : undefined,
         folderIds: targetFolderId ? [targetFolderId] : undefined,
         createdAt: Date.now(),
       });
@@ -755,6 +757,22 @@ export function useProject() {
         updatedAt: new Date().toISOString(),
       }));
       setIsDirty(true);
+
+      // Extract quick video thumbnails for preview in media pool
+      for (const newAsset of newAssets) {
+        if (newAsset.type === 'video') {
+          captureVideoThumbnail(newAsset.url).then((thumb) => {
+            if (thumb) {
+              setProject((prev) => ({
+                ...prev,
+                media: prev.media.map((m) =>
+                  m.id === newAsset.id ? { ...m, thumbnailUrl: thumb } : m
+                ),
+              }));
+            }
+          });
+        }
+      }
 
       // Trigger automatic background analysis for newly imported visual assets sequentially
       const visualAssets = newAssets.filter((a) => a.type === 'video' || a.type === 'image');
@@ -851,6 +869,7 @@ export function useProject() {
         aspectRatio: ratio,
         aspectRatioLabel: label,
         size: asset.size,
+        thumbnailUrl: isImage ? asset.webPath : undefined,
         folderIds: targetFolderId ? [targetFolderId] : undefined,
         createdAt: Date.now(),
       });
@@ -863,6 +882,22 @@ export function useProject() {
         updatedAt: new Date().toISOString(),
       }));
       setIsDirty(true);
+
+      // Extract quick video thumbnails for preview in media pool
+      for (const newAsset of newAssets) {
+        if (newAsset.type === 'video') {
+          captureVideoThumbnail(newAsset.url).then((thumb) => {
+            if (thumb) {
+              setProject((prev) => ({
+                ...prev,
+                media: prev.media.map((m) =>
+                  m.id === newAsset.id ? { ...m, thumbnailUrl: thumb } : m
+                ),
+              }));
+            }
+          });
+        }
+      }
 
       const visualAssets = newAssets.filter((a) => a.type === 'video' || a.type === 'image');
       if (visualAssets.length > 0) {

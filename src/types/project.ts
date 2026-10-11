@@ -101,6 +101,7 @@ export interface MediaAsset {
   aspectRatio: number;      // width / height
   aspectRatioLabel: string; // e.g. "9:16 Vertical", "16:9 Native", "1:1 Square", "4:3", "21:9 Ultrawide"
   size?: number;            // in bytes
+  thumbnailUrl?: string;    // Preview picture data URL or image path
   analysis?: MediaAnalysis; // Local media intelligence & semantic analysis
   folderIds?: string[];     // IDs of logical folders this media belongs to
   createdAt: number;

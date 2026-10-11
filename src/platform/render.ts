@@ -49,9 +49,9 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
   const seg0 = options.segments[0];
   const seg1 = isMulti ? options.segments[1] : null;
 
-  const crop_x = Math.round(seg0.crop_x);
-  const crop_y = Math.round(seg0.crop_y);
-  const crop_size = Math.round(seg0.crop_size);
+  const crop_x = Math.round(seg0.crop_x ?? 0);
+  const crop_y = Math.round(seg0.crop_y ?? 0);
+  const crop_size = Math.round(seg0.crop_size || 1080);
 
   const videoFilters = options.enhance ? ENHANCED_VIDEO_FILTERS : DEFAULT_VIDEO_FILTERS;
   const applyAudioEnhance = options.enhance && (options.audioMode === 'enhanced' || options.audioMode === 'voice_focus');
@@ -76,9 +76,9 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
     fc += `[0:a]atrim=${seg0.start}:${seg0.end},asetpts=PTS-STARTPTS,afade=t=out:st=${dur0 - fadeDur}:d=${fadeDur}[a0];`;
 
     // Extract seg1 video and audio with fade in
-    const c1_x = Math.round(seg1.crop_x);
-    const c1_y = Math.round(seg1.crop_y);
-    const c1_s = Math.round(seg1.crop_size);
+    const c1_x = Math.round(seg1.crop_x ?? 0);
+    const c1_y = Math.round(seg1.crop_y ?? 0);
+    const c1_s = Math.round(seg1.crop_size || 1080);
     fc += `[0:v]trim=${seg1.start}:${seg1.end},setpts=PTS-STARTPTS,crop=${c1_s}:${c1_s}:${c1_x}:${c1_y},scale=1002:1002,fade=t=in:st=0:d=${fadeDur},${videoFilters}[v1];`;
     fc += `[0:a]atrim=${seg1.start}:${seg1.end},asetpts=PTS-STARTPTS,afade=t=in:st=0:d=${fadeDur}[a1];`;
 
@@ -131,9 +131,9 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
     options.segments.forEach((seg, i) => {
       const sDur = seg.end - seg.start;
       totalDur += sDur;
-      const cX = Math.round(seg.crop_x);
-      const cY = Math.round(seg.crop_y);
-      const cS = Math.round(seg.crop_size);
+      const cX = Math.round(seg.crop_x ?? 0);
+      const cY = Math.round(seg.crop_y ?? 0);
+      const cS = Math.round(seg.crop_size || 1080);
       
       fc += `[v_in${i}]trim=${seg.start}:${seg.end},setpts=PTS-STARTPTS,crop=${cS}:${cS}:${cX}:${cY},scale=1002:1002,${videoFilters}[v${i}];`;
       fc += `[a_in${i}]atrim=${seg.start}:${seg.end},asetpts=PTS-STARTPTS[a${i}];`;

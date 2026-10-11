@@ -8,6 +8,63 @@ import { useProject } from './state/useProjectStore';
 import { Music, Plus, Sparkles, Loader2, Folder } from 'lucide-react';
 import { pickAndroidMedia, pickAndroidVoiceover, isNativeAndroid } from './platform/androidMedia';
 import { formatSecondsToMinutes } from './engine/schema';
+import { MediaAsset } from './types/project';
+import { captureVideoThumbnail } from './engine/mediaThumbnail';
+
+const MediaPreviewThumbnail: React.FC<{ asset: MediaAsset }> = ({ asset }) => {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(
+    asset.thumbnailUrl || asset.analysis?.keyframes?.[0]?.imageData || null
+  );
+
+  const displayThumb = asset.thumbnailUrl || asset.analysis?.keyframes?.[0]?.imageData || thumbUrl;
+
+  useEffect(() => {
+    if (displayThumb || asset.type !== 'video' || !asset.url) return;
+    let isMounted = true;
+    captureVideoThumbnail(asset.url).then((url) => {
+      if (isMounted && url) {
+        setThumbUrl(url);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [asset.url, asset.type, displayThumb]);
+
+  return (
+    <>
+      {asset.type === 'video' ? (
+        displayThumb ? (
+          <img src={displayThumb} alt={asset.name} className="w-full h-full object-cover pointer-events-none" />
+        ) : (
+          <video
+            src={`${asset.url}#t=0.1`}
+            className="w-full h-full object-cover pointer-events-none"
+            muted
+            playsInline
+            preload="metadata"
+          />
+        )
+      ) : (
+        <img src={asset.url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" />
+      )}
+
+      {/* Video name overlay */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-1 pointer-events-none flex flex-col justify-end">
+        <span className="text-[10px] text-white font-medium truncate leading-tight drop-shadow-sm">
+          {asset.name}
+        </span>
+      </div>
+
+      {/* Duration badge for video */}
+      {asset.type === 'video' && asset.duration > 0 && (
+        <div className="absolute top-1 right-1 bg-black/75 backdrop-blur-xs rounded px-1 py-0.5 text-[9px] text-slate-200 font-mono pointer-events-none border border-white/10">
+          {formatSecondsToMinutes(asset.duration)}
+        </div>
+      )}
+    </>
+  );
+};
 
 const LongFormEditor: React.FC<{onBack?: () => void}> = ({onBack}) => {
   const {
@@ -319,13 +376,9 @@ const LongFormEditor: React.FC<{onBack?: () => void}> = ({onBack}) => {
                             }
                           }}
                         >
-                          {asset.type === 'video' ? (
-                            <video src={asset.url} className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={asset.url} className="w-full h-full object-cover" />
-                          )}
+                          <MediaPreviewThumbnail asset={asset} />
                           {(!asset.file && (!asset.url || asset.url.length === 0)) && (
-                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center text-[10px] text-red-200 font-bold">MISSING</div>
+                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center text-[10px] text-red-200 font-bold z-10">MISSING</div>
                           )}
                         </div>
                       ))}
@@ -370,13 +423,9 @@ const LongFormEditor: React.FC<{onBack?: () => void}> = ({onBack}) => {
                             }
                           }}
                         >
-                          {asset.type === 'video' ? (
-                            <video src={asset.url} className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={asset.url} className="w-full h-full object-cover" />
-                          )}
+                          <MediaPreviewThumbnail asset={asset} />
                           {(!asset.file && (!asset.url || asset.url.length === 0)) && (
-                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center text-[10px] text-red-200 font-bold">MISSING</div>
+                            <div className="absolute inset-0 bg-red-900/50 flex items-center justify-center text-[10px] text-red-200 font-bold z-10">MISSING</div>
                           )}
                         </div>
                       ))}
